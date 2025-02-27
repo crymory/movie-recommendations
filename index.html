@@ -5,199 +5,377 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Что посмотреть сегодня</title>
     <style>
+        :root {
+            --primary: #e50914;
+            --primary-hover: #b20710;
+            --background: #121212;
+            --card-bg: #1e1e1e;
+            --surface: #242424;
+            --text: #e5e5e5;
+            --text-secondary: #aaaaaa;
+            --border: #333333;
+        }
+        
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
         body {
-            font-family: 'Arial', sans-serif;
-            max-width: 800px;
+            font-family: 'Roboto', 'Arial', sans-serif;
+            max-width: 1000px;
             margin: 0 auto;
             padding: 20px;
-            background-color: #f5f5f5;
-            color: #333;
+            background-color: var(--background);
+            color: var(--text);
+            line-height: 1.6;
         }
         
         .container {
-            background-color: white;
-            border-radius: 10px;
-            padding: 20px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
         }
         
         h1 {
             text-align: center;
-            color: #e50914;
+            color: var(--primary);
+            margin-bottom: 25px;
+            font-size: 2.2rem;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
         }
         
         .movie-card {
             display: flex;
             flex-direction: column;
-            margin-top: 20px;
-            border-radius: 5px;
+            margin-top: 30px;
+            border-radius: 10px;
             overflow: hidden;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+            background-color: var(--surface);
+            border: 1px solid var(--border);
+            transition: transform 0.3s, box-shadow 0.3s;
         }
         
-        @media (min-width: 600px) {
+        .movie-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
+        }
+        
+        @media (min-width: 700px) {
             .movie-card {
                 flex-direction: row;
+                min-height: 400px;
             }
         }
         
         .movie-poster {
-            flex: 0 0 200px;
-            background-color: #ddd;
+            flex: 0 0 40%;
+            max-width: 100%;
             position: relative;
+            overflow: hidden;
+            background-color: #000;
         }
         
         .movie-poster img {
             width: 100%;
-            height: 300px;
+            height: 100%;
             object-fit: cover;
+            transition: transform 0.3s;
+        }
+        
+        .movie-poster img:hover {
+            transform: scale(1.05);
         }
         
         .movie-info {
             flex: 1;
-            padding: 15px;
-            background-color: #fff;
+            padding: 25px;
+            background-color: var(--surface);
+            display: flex;
+            flex-direction: column;
         }
         
         .movie-title {
             margin-top: 0;
-            font-size: 24px;
-            color: #e50914;
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--text);
+            margin-bottom: 12px;
         }
         
         .movie-meta {
             display: flex;
             flex-wrap: wrap;
-            gap: 10px;
-            margin-bottom: 10px;
-            color: #777;
+            gap: 15px;
+            margin-bottom: 15px;
+            color: var(--text-secondary);
+            font-size: 15px;
+        }
+        
+        .movie-meta span {
+            display: flex;
+            align-items: center;
+        }
+        
+        .movie-meta span::before {
+            content: "•";
+            margin-right: 8px;
+            font-size: 1.2em;
+            opacity: 0.7;
+        }
+        
+        .movie-meta span:first-child::before {
+            display: none;
         }
         
         .movie-description {
-            line-height: 1.6;
+            line-height: 1.7;
+            margin-bottom: 20px;
+            flex-grow: 1;
+            color: var(--text);
         }
         
         .rating {
             font-weight: bold;
-            color: #e50914;
+            color: var(--primary);
+            display: inline-flex;
+            align-items: center;
+        }
+        
+        .rating::before {
+            content: "★";
+            margin-right: 4px;
         }
         
         button {
             display: block;
             width: 100%;
-            padding: 12px;
-            background-color: #e50914;
+            padding: 14px;
+            background-color: var(--primary);
             color: white;
             border: none;
-            border-radius: 5px;
+            border-radius: 8px;
             font-size: 16px;
+            font-weight: 600;
             cursor: pointer;
             margin-top: 20px;
-            transition: background-color 0.3s;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
         }
         
         button:hover {
-            background-color: #b20710;
+            background-color: var(--primary-hover);
+            box-shadow: 0 4px 12px rgba(229, 9, 20, 0.3);
+            transform: translateY(-2px);
+        }
+        
+        button:active {
+            transform: translateY(0);
         }
         
         .loading {
             text-align: center;
-            padding: 20px;
+            padding: 40px;
             font-style: italic;
-            color: #777;
+            color: var(--text-secondary);
             display: none;
+            font-size: 18px;
+        }
+        
+        .loading::after {
+            content: "...";
+            animation: dots 1.5s infinite;
+        }
+        
+        @keyframes dots {
+            0%, 20% { content: "."; }
+            40% { content: ".."; }
+            60%, 100% { content: "..."; }
         }
         
         footer {
-            margin-top: 20px;
+            margin-top: 30px;
             text-align: center;
-            font-size: 12px;
-            color: #777;
+            font-size: 14px;
+            color: var(--text-secondary);
+            padding: 15px;
         }
         
         .filter-options {
             margin: 20px 0;
-            padding: 15px;
-            background-color: #f9f9f9;
-            border-radius: 5px;
+            padding: 20px;
+            background-color: var(--surface);
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            margin-bottom: 25px;
+            transition: all 0.3s;
         }
         
         .filter-title {
             font-weight: bold;
-            margin-bottom: 10px;
+            margin-bottom: 15px;
+            color: var(--primary);
+            font-size: 18px;
+        }
+        
+        .filter-subtitle {
+            font-weight: 500;
+            margin-bottom: 8px;
+            color: var(--text);
         }
         
         .genre-options {
             display: flex;
             flex-wrap: wrap;
             gap: 10px;
-            margin-bottom: 15px;
+            margin-bottom: 20px;
         }
         
         .genre-tag {
-            background-color: #e5e5e5;
-            padding: 5px 10px;
-            border-radius: 15px;
+            background-color: rgba(255, 255, 255, 0.1);
+            padding: 8px 15px;
+            border-radius: 20px;
             cursor: pointer;
-            transition: background-color 0.3s;
+            transition: all 0.3s;
+            font-size: 14px;
+            border: 1px solid var(--border);
+        }
+        
+        .genre-tag:hover {
+            background-color: rgba(229, 9, 20, 0.15);
+            border-color: rgba(229, 9, 20, 0.3);
         }
         
         .genre-tag.selected {
-            background-color: #e50914;
+            background-color: var(--primary);
             color: white;
+            border-color: var(--primary);
+            box-shadow: 0 2px 8px rgba(229, 9, 20, 0.3);
         }
         
         .year-range {
             display: flex;
             align-items: center;
-            gap: 10px;
-            margin-bottom: 15px;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .year-range input {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 8px 12px;
+            border-radius: 5px;
+            width: 80px;
+        }
+        
+        .year-range input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+        
+        input[type="range"] {
+            width: 100%;
+            margin: 10px 0;
+            background: var(--card-bg);
+            height: 5px;
+            border-radius: 5px;
+            -webkit-appearance: none;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            background: var(--primary);
+            border-radius: 50%;
+            cursor: pointer;
         }
         
         .actions {
             display: flex;
-            gap: 10px;
-            margin-top: 15px;
-        }
-        
-        .watch-later-btn, .favorite-btn, .seen-btn {
-            padding: 8px 12px;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 14px;
-            border: 1px solid #ddd;
-            background-color: #f5f5f5;
-            transition: all 0.3s;
-        }
-        
-        .watch-later-btn:hover, .favorite-btn:hover, .seen-btn:hover {
-            background-color: #e5e5e5;
-        }
-        
-        .saved-lists {
+            gap: 12px;
             margin-top: 20px;
         }
         
+        .watch-later-btn, .favorite-btn, .seen-btn {
+            flex: 1;
+            padding: 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            border: 1px solid var(--border);
+            background-color: var(--card-bg);
+            color: var(--text);
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        
+        .watch-later-btn::before {
+            content: "⏱️";
+        }
+        
+        .favorite-btn::before {
+            content: "❤️";
+        }
+        
+        .seen-btn::before {
+            content: "✅";
+        }
+        
+        .watch-later-btn:hover, .favorite-btn:hover, .seen-btn:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+            transform: translateY(-2px);
+        }
+        
+        .saved-lists {
+            margin-top: 40px;
+            padding: 20px;
+            background-color: var(--surface);
+            border-radius: 10px;
+            border: 1px solid var(--border);
+        }
+        
         .saved-lists h3 {
-            border-bottom: 1px solid #ddd;
-            padding-bottom: 5px;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+            color: var(--primary);
+            font-size: 20px;
         }
         
         .list-tabs {
             display: flex;
-            gap: 10px;
-            margin-bottom: 10px;
+            gap: 15px;
+            margin-bottom: 20px;
         }
         
         .list-tab {
-            padding: 5px 10px;
+            padding: 8px 15px;
             cursor: pointer;
             border-bottom: 2px solid transparent;
+            transition: all 0.3s;
+            font-weight: 500;
+        }
+        
+        .list-tab:hover {
+            color: var(--primary);
         }
         
         .list-tab.active {
-            border-bottom: 2px solid #e50914;
+            border-bottom: 2px solid var(--primary);
             font-weight: bold;
+            color: var(--primary);
         }
         
         .movie-list {
@@ -211,42 +389,91 @@
         .movie-list-item {
             display: flex;
             align-items: center;
-            padding: 8px 0;
-            border-bottom: 1px solid #eee;
+            padding: 12px;
+            border-bottom: 1px solid var(--border);
+            transition: background-color 0.3s;
+        }
+        
+        .movie-list-item:hover {
+            background-color: rgba(255, 255, 255, 0.05);
         }
         
         .movie-list-item img {
-            width: 50px;
-            height: 75px;
+            width: 60px;
+            height: 90px;
             object-fit: cover;
-            margin-right: 10px;
+            margin-right: 15px;
+            border-radius: 4px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
         }
         
         .movie-list-title {
             flex: 1;
+            font-weight: 500;
         }
         
         .remove-btn {
-            color: #999;
+            color: var(--text-secondary);
             cursor: pointer;
-            padding: 5px;
+            padding: 8px;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
         }
         
         .remove-btn:hover {
-            color: #e50914;
+            color: var(--primary);
+            background-color: rgba(229, 9, 20, 0.1);
         }
         
         .toggle-filters {
             background: none;
             border: none;
-            color: #e50914;
-            font-size: 14px;
-            text-decoration: underline;
+            color: var(--text);
+            font-size: 15px;
+            text-decoration: none;
             cursor: pointer;
-            padding: 0;
-            margin: 10px 0;
+            padding: 8px 16px;
+            margin: 15px 0;
             width: auto;
-            display: inline-block;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            border-radius: 5px;
+            transition: all 0.3s;
+            font-weight: 500;
+            border: 1px solid var(--border);
+            background-color: var(--surface);
+        }
+        
+        .toggle-filters:hover {
+            color: var(--primary);
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+        
+        .toggle-filters::before {
+            content: "🔍";
+        }
+        
+        .empty-list-message {
+            padding: 20px;
+            text-align: center;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+        
+        /* Additional animations */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .movie-card {
+            animation: fadeIn 0.5s ease-out forwards;
         }
     </style>
 </head>
@@ -270,23 +497,22 @@
                 <div class="filter-subtitle">Год выпуска:</div>
                 <div class="year-range">
                     <label for="yearFrom">От:</label>
-                    <input type="number" id="yearFrom" min="1900" max="2025" value="1990" style="width: 70px;">
+                    <input type="number" id="yearFrom" min="1900" max="2025" value="1990">
                     
                     <label for="yearTo">До:</label>
-                    <input type="number" id="yearTo" min="1900" max="2025" value="2025" style="width: 70px;">
+                    <input type="number" id="yearTo" min="1900" max="2025" value="2025">
                 </div>
             </div>
             
             <div>
-                <div class="filter-subtitle">Минимальный рейтинг:</div>
+                <div class="filter-subtitle">Минимальный рейтинг: <span id="ratingValue">6.0</span></div>
                 <input type="range" id="minRating" min="0" max="10" step="0.5" value="6">
-                <span id="ratingValue">6.0</span>
             </div>
         </div>
         
-        <button id="getMovie">Получить рекомендацию</button>
+        <button id="getMovie">Найти фильм</button>
         
-        <div id="loading" class="loading">Ищем для вас отличный фильм...</div>
+        <div id="loading" class="loading">Ищем для вас отличный фильм</div>
         
         <div id="movieCard" class="movie-card" style="display: none;">
             <div class="movie-poster">
@@ -335,7 +561,7 @@
     </div>
     
     <footer>
-        <p>Данные о фильмах предоставлены TMDB API</p>
+        <p>© 2025 • Данные о фильмах предоставлены TMDB API</p>
     </footer>
 
     <script>
@@ -448,9 +674,55 @@
                 saveListsToStorage();
                 renderList(listName);
                 
-                alert(`Фильм "${movie.title}" добавлен в список "${getListTitle(listName)}"`);
+                // Создаем элемент для уведомления
+                const notification = document.createElement('div');
+                notification.style.position = 'fixed';
+                notification.style.bottom = '20px';
+                notification.style.left = '50%';
+                notification.style.transform = 'translateX(-50%)';
+                notification.style.backgroundColor = '#27ae60';
+                notification.style.color = 'white';
+                notification.style.padding = '15px 25px';
+                notification.style.borderRadius = '8px';
+                notification.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.2)';
+                notification.style.zIndex = '1000';
+                notification.textContent = `Фильм "${movie.title}" добавлен в список "${getListTitle(listName)}"`;
+                
+                document.body.appendChild(notification);
+                
+                // Удаляем уведомление через 3 секунды
+                setTimeout(() => {
+                    notification.style.opacity = '0';
+                    notification.style.transition = 'opacity 0.5s';
+                    setTimeout(() => {
+                        document.body.removeChild(notification);
+                    }, 500);
+                }, 3000);
             } else {
-                alert(`Фильм "${movie.title}" уже есть в списке "${getListTitle(listName)}"`);
+                // Уведомление о том, что фильм уже есть в списке
+                const notification = document.createElement('div');
+                notification.style.position = 'fixed';
+                notification.style.bottom = '20px';
+                notification.style.left = '50%';
+                notification.style.transform = 'translateX(-50%)';
+                notification.style.backgroundColor = '#e74c3c';
+                notification.style.color = 'white';
+                notification.style.padding = '15px 25px';
+                notification.style.borderRadius = '8px';
+                notification.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.2)';
+                notification.style.zIndex = '1000';
+                notification.textContent = `Фильм "${movie.title}" уже есть в списке "${getListTitle(listName)}"`;
+                
+                document.body.appendChild(notification);
+                
+                // Удаляем уведомление через 3 секунды
+                setTimeout(() => {
+                    notification.style.opacity = '0';
+                    notification.style.transition = 'opacity 0.5s';
+                    setTimeout(() => {
+                        document.body.removeChild(notification);
+                    }, 500);
+                }, 3000);
             }
         }
         
@@ -497,7 +769,7 @@
                 
                 let posterUrl = movie.poster;
                 if (!posterUrl || posterUrl === 'null') {
-                    posterUrl = '/api/placeholder/50/75';
+                    posterUrl = '/api/placeholder/60/90';
                 }
                 
                 item.innerHTML = `
@@ -583,56 +855,103 @@
                     if (data.results && data.results.length > 0) {
                         // Выбираем случайный фильм из результатов
                         const randomIndex = Math.floor(Math.random() * data.results.length);
-                        return data.results[randomIndex].id;
+                        const movie = data.results[randomIndex];
+                        
+                        // Получаем дополнительную информацию о фильме
+                        return fetch(`https://api.themoviedb.org/3/movie/${movie.id}?api_key=${apiKey}&language=ru`)
+                            .then(response => response.json())
+                            .then(movieDetails => {
+                                return {
+                                    id: movie.id,
+                                    title: movie.title,
+                                    year: movie.release_date ? movie.release_date.substring(0, 4) : 'Неизвестно',
+                                    poster: movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : null,
+                                    description: movie.overview || movieDetails.overview || 'Описание отсутствует',
+                                    rating: movie.vote_average,
+                                    genres: movie.genres || movieDetails.genres || []
+                                };
+                            });
                     } else {
-                        throw new Error('Не найдено фильмов, соответствующих критериям');
+                        throw new Error('Не удалось найти фильмы с указанными параметрами');
                     }
                 });
         }
         
-        // Получение информации о фильме по ID
-        function fetchMovieData(movieId) {
-            return fetch(`https://api.themoviedb.org/3/movie/${movieId}?api_key=${apiKey}&language=ru`)
-                .then(response => response.json())
-                .then(data => {
-                    return {
-                        id: data.id,
-                        title: data.title,
-                        year: data.release_date ? data.release_date.split('-')[0] : 'Неизвестно',
-                        genre: data.genres ? data.genres.map(g => g.name).join(', ') : 'Неизвестно',
-                        rating: data.vote_average ? data.vote_average.toFixed(1) : 'Нет оценок',
-                        description: data.overview || 'Описание отсутствует',
-                        poster: data.poster_path ? `https://image.tmdb.org/t/p/w500${data.poster_path}` : '/api/placeholder/200/300'
-                    };
-                });
-        }
-        
-        // Функция для обновления UI с информацией о фильме
-        function updateMovieUI(movieData) {
-            currentMovie = movieData;
-            
-            document.getElementById('movieTitle').textContent = movieData.title;
-            document.getElementById('movieYear').textContent = movieData.year;
-            document.getElementById('movieGenre').textContent = movieData.genre;
-            document.getElementById('movieRating').textContent = movieData.rating;
-            document.getElementById('movieDescription').textContent = movieData.description;
-            document.getElementById('moviePoster').src = movieData.poster;
-            
-            document.getElementById('loading').style.display = 'none';
-            document.getElementById('movieCard').style.display = 'flex';
-        }
-        
-        // Обработчик нажатия кнопки
+        // Обработчик для кнопки "Найти фильм"
         document.getElementById('getMovie').addEventListener('click', function() {
-            document.getElementById('movieCard').style.display = 'none';
+            // Показываем индикатор загрузки
             document.getElementById('loading').style.display = 'block';
+            document.getElementById('movieCard').style.display = 'none';
             
             getRandomMovie()
-                .then(movieId => fetchMovieData(movieId))
-                .then(updateMovieUI)
+                .then(movie => {
+                    currentMovie = movie;
+                    
+                    // Заполняем данные о фильме
+                    document.getElementById('movieTitle').textContent = movie.title;
+                    document.getElementById('movieYear').textContent = movie.year;
+                    document.getElementById('movieRating').textContent = movie.rating;
+                    
+                    // Отображаем постер фильма
+                    const posterElement = document.getElementById('moviePoster');
+                    if (movie.poster) {
+                        posterElement.src = movie.poster;
+                        posterElement.alt = `Постер к фильму ${movie.title}`;
+                    } else {
+                        posterElement.src = '/api/placeholder/300/450';
+                        posterElement.alt = 'Постер отсутствует';
+                    }
+                    
+                    // Отображаем жанры
+                    let genresText = '';
+                    if (movie.genres && movie.genres.length > 0) {
+                        genresText = movie.genres.map(genre => genre.name).join(', ');
+                    } else {
+                        genresText = 'Жанр не указан';
+                    }
+                    document.getElementById('movieGenre').textContent = genresText;
+                    
+                    // Отображаем описание
+                    document.getElementById('movieDescription').textContent = movie.description;
+                    
+                    // Скрываем индикатор загрузки и показываем карточку фильма
+                    document.getElementById('loading').style.display = 'none';
+                    document.getElementById('movieCard').style.display = 'flex';
+                    
+                    // Плавно прокручиваем к карточке фильма
+                    document.getElementById('movieCard').scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                })
                 .catch(error => {
-                    console.error('Ошибка при получении данных о фильме:', error);
-                    document.getElementById('loading').textContent = 'Произошла ошибка. Пожалуйста, попробуйте снова.';
+                    console.error('Ошибка при получении фильма:', error);
+                    document.getElementById('loading').style.display = 'none';
+                    
+                    // Показываем уведомление об ошибке
+                    const notification = document.createElement('div');
+                    notification.style.position = 'fixed';
+                    notification.style.bottom = '20px';
+                    notification.style.left = '50%';
+                    notification.style.transform = 'translateX(-50%)';
+                    notification.style.backgroundColor = '#e74c3c';
+                    notification.style.color = 'white';
+                    notification.style.padding = '15px 25px';
+                    notification.style.borderRadius = '8px';
+                    notification.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.2)';
+                    notification.style.zIndex = '1000';
+                    notification.textContent = 'Не удалось найти фильм. Попробуйте изменить параметры фильтра.';
+                    
+                    document.body.appendChild(notification);
+                    
+                    // Удаляем уведомление через 5 секунд
+                    setTimeout(() => {
+                        notification.style.opacity = '0';
+                        notification.style.transition = 'opacity 0.5s';
+                        setTimeout(() => {
+                            document.body.removeChild(notification);
+                        }, 500);
+                    }, 5000);
                 });
         });
     </script>
