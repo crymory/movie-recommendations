@@ -448,52 +448,74 @@
             });
         }
         
-        // Получение случайного фильма с учетом фильтров
-        function getRandomMovie() {
-            // Получаем значения фильтров
-            const yearFrom = document.getElementById('yearFrom').value;
-            const yearTo = document.getElementById('yearTo').value;
-            const minRating = document.getElementById('minRating').value;
-            
-            // Формируем URL с учетом фильтров
-            let url = `https://api.themoviedb.org/3/discover/movie?api_key=${apiKey}&language=ru&sort_by=popularity.desc&vote_average.gte=${minRating}&primary_release_date.gte=${yearFrom}-01-01&primary_release_date.lte=${yearTo}-12-31`;
-            
-            // Добавляем выбранные жанры, если есть
-            if (selectedGenres.length > 0) {
-                url += `&with_genres=${selectedGenres.join(',')}`;
-            }
-            
-            // Добавляем случайную страницу (TMDB имеет максимум 500 страниц)
-            const randomPage = Math.floor(Math.random() * 20) + 1;
-            url += `&page=${randomPage}`;
-            
-            return fetch(url)
-                .then(response => response.json())
-                .then(data => {
-                    if (data.results && data.results.length > 0) {
-                        // Выбираем случайный фильм из результатов
-                        const randomIndex = Math.floor(Math.random() * data.results.length);
-                        const movie = data.results[randomIndex];
+        // Улучшенная функция получения случайного фильма с учетом фильтров
+function getRandomMovie() {
+    // Получаем значения фильтров
+    const yearFrom = document.getElementById('yearFrom').value;
+    const yearTo = document.getElementById('yearTo').value;
+    const minRating = document.getElementById('minRating').value;
+    
+    // Формируем URL с учетом фильтров
+    let url = `https://api.themoviedb.org/3/discover/movie?api_key=${apiKey}&language=ru&sort_by=popularity.desc&vote_average.gte=${minRating}&primary_release_date.gte=${yearFrom}-01-01&primary_release_date.lte=${yearTo}-12-31`;
+    
+    // Добавляем выбранные жанры, если есть
+    if (selectedGenres.length > 0) {
+        url += `&with_genres=${selectedGenres.join(',')}`;
+    }
+    
+    // Добавляем случайную страницу (TMDB имеет максимум 500 страниц)
+    const randomPage = Math.floor(Math.random() * 20) + 1;
+    url += `&page=${randomPage}`;
+    
+    return fetch(url)
+        .then(response => response.json())
+        .then(data => {
+            if (data.results && data.results.length > 0) {
+                // Выбираем случайный фильм из результатов
+                const randomIndex = Math.floor(Math.random() * data.results.length);
+                const movie = data.results[randomIndex];
+                
+                // Получаем дополнительную информацию о фильме
+                return fetch(`https://api.themoviedb.org/3/movie/${movie.id}?api_key=${apiKey}&language=ru&append_to_response=credits,videos`)
+                    .then(response => response.json())
+                    .then(movieDetails => {
+                        // Получаем данные о режиссере
+                        const directors = movieDetails.credits ? movieDetails.credits.crew.filter(person => person.job === 'Director').map(director => director.name) : [];
                         
-                        // Получаем дополнительную информацию о фильме
-                        return fetch(`https://api.themoviedb.org/3/movie/${movie.id}?api_key=${apiKey}&language=ru`)
-                            .then(response => response.json())
-                            .then(movieDetails => {
-                                return {
-                                    id: movie.id,
-                                    title: movie.title,
-                                    year: movie.release_date ? movie.release_date.substring(0, 4) : 'Неизвестно',
-                                    poster: movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : null,
-                                    description: movie.overview || movieDetails.overview || 'Описание отсутствует',
-                                    rating: movie.vote_average,
-                                    genres: movie.genres || movieDetails.genres || []
-                                };
-                            });
-                    } else {
-                        throw new Error('Не удалось найти фильмы с указанными параметрами');
-                    }
-                });
-        }
+                        // Получаем данных об актерах (первые 5)
+                        const cast = movieDetails.credits ? movieDetails.credits.cast.slice(0, 5).map(actor => actor.name) : [];
+                        
+                        // Получаем трейлер (если есть)
+                        let trailerKey = null;
+                        if (movieDetails.videos && movieDetails.videos.results && movieDetails.videos.results.length > 0) {
+                            // Ищем официальный трейлер на русском, если такого нет, берём первый трейлер
+                            const ruTrailer = movieDetails.videos.results.find(video => 
+                                video.type === 'Trailer' && video.site === 'YouTube' && video.name.toLowerCase().includes('трейлер'));
+                            
+                            const anyTrailer = movieDetails.videos.results.find(video => 
+                                video.type === 'Trailer' && video.site === 'YouTube');
+                                
+                            trailerKey = ruTrailer ? ruTrailer.key : (anyTrailer ? anyTrailer.key : null);
+                        }
+                        
+                        return {
+                            id: movie.id,
+                            title: movie.title,
+                            year: movie.release_date ? movie.release_date.substring(0, 4) : 'Неизвестно',
+                            poster: movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : null,
+                            description: movie.overview || movieDetails.overview || 'Описание отсутствует',
+                            rating: movie.vote_average,
+                            genres: movie.genres || movieDetails.genres || [],
+                            directors: directors,
+                            cast: cast,
+                            trailerKey: trailerKey
+                        };
+                    });
+            } else {
+                throw new Error('Не удалось найти фильмы с указанными параметрами');
+            }
+        });
+}
         
         // Инициализация функционала "Фильм для двоих"
         function initCoupleMovieFinder() {
