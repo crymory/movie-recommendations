@@ -3,1728 +3,258 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Что посмотреть сегодня</title>
+    <title>Random Movie Picker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Outfit', sans-serif; }
+        /* Эффект стекла для карточек */
+        .glass {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .poster-shadow { box-shadow: 0 0 20px rgba(0,0,0,0.5); }
+        
+        /* Анимация загрузки */
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3b82f6;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
 </head>
-<body>
-    <div class="container">
-        <h1>Что посмотреть сегодня</h1>
-        
-        <button id="toggleFilters" class="toggle-filters">Показать фильтры</button>
-        
-        <div id="filterOptions" class="filter-options" style="display: none;">
-            <div class="filter-title">Фильтры:</div>
-            
-            <div>
-                <div class="filter-subtitle">Жанры:</div>
-                <div id="genreOptions" class="genre-options">
-                    <!-- Жанры будут добавлены динамически -->
-                </div>
-            </div>
-            
-            <div>
-                <div class="filter-subtitle">Год выпуска:</div>
-                <div class="year-range">
-                    <label for="yearFrom">От:</label>
-                    <input type="number" id="yearFrom" min="1900" max="2025" value="1990">
-                    
-                    <label for="yearTo">До:</label>
-                    <input type="number" id="yearTo" min="1900" max="2025" value="2025">
-                </div>
-            </div>
-            
-            <div>
-                <div class="filter-subtitle">Минимальный рейтинг: <span id="ratingValue">6.0</span></div>
-                <input type="range" id="minRating" min="0" max="10" step="0.5" value="6">
-            </div>
-        </div>
-        
-        <button id="getMovie">Найти фильм</button>
-        
-        <div id="loading" class="loading">Ищем для вас отличный фильм</div>
-        
-        <div id="movieCard" class="movie-card" style="display: none;">
-            <div class="movie-poster">
-                <img id="moviePoster" alt="Постер фильма">
-            </div>
-            <div class="movie-info">
-                <h2 id="movieTitle" class="movie-title">Название фильма</h2>
-                <div class="movie-meta">
-                    <span id="movieYear">Год</span>
-                    <span id="movieGenre">Жанр</span>
-                    <span id="movieRating" class="rating">0.0</span>
-                </div>
-                <p id="movieDescription" class="movie-description">Описание фильма будет здесь.</p>
-                
-                <div class="actions">
-                    <button class="watch-later-btn" id="watchLaterBtn">Смотреть позже</button>
-                    <button class="favorite-btn" id="favoriteBtn">В избранное</button>
-                    <button class="seen-btn" id="seenBtn">Уже смотрел</button>
-                </div>
-            </div>
-        </div>
-        
-        <div id="savedLists" class="saved-lists" style="display: none;">
-            <h3>Мои списки</h3>
-            <div class="list-tabs">
-                <div class="list-tab active" data-list="watchLater">Смотреть позже</div>
-                <div class="list-tab" data-list="favorites">Избранное</div>
-                <div class="list-tab" data-list="seen">Просмотренные</div>
-            </div>
-            
-            <div id="watchLaterList" class="movie-list active">
-                <!-- Фильмы "смотреть позже" будут добавлены динамически -->
-                <div class="empty-list-message">В этом списке пока нет фильмов</div>
-            </div>
-            
-            <div id="favoritesList" class="movie-list">
-                <!-- Избранные фильмы будут добавлены динамически -->
-                <div class="empty-list-message">В этом списке пока нет фильмов</div>
-            </div>
-            
-            <div id="seenList" class="movie-list">
-                <!-- Просмотренные фильмы будут добавлены динамически -->
-                <div class="empty-list-message">В этом списке пока нет фильмов</div>
-            </div>
+<body class="bg-slate-900 text-white min-h-screen flex flex-col items-center p-4 bg-[url('https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?q=80&w=2070&auto=format&fit=crop')] bg-cover bg-center bg-no-repeat bg-fixed bg-blend-multiply">
+
+    <div id="apiKeyModal" class="fixed inset-0 bg-black/90 flex items-center justify-center z-50 hidden">
+        <div class="glass p-8 rounded-xl max-w-md w-full text-center">
+            <h2 class="text-2xl font-bold mb-4">Настройка доступа</h2>
+            <p class="text-gray-300 mb-4 text-sm">Введите API Key от TMDB. Он сохранится локально в вашем браузере.</p>
+            <input type="text" id="apiKeyInput" placeholder="Введите ваш API Key" class="w-full p-3 rounded bg-slate-800 border border-slate-600 focus:border-blue-500 outline-none mb-4 text-white">
+            <button onclick="saveApiKey()" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-6 rounded-lg w-full transition">Сохранить</button>
+            <p class="mt-4 text-xs text-gray-500"><a href="https://www.themoviedb.org/settings/api" target="_blank" class="underline hover:text-blue-400">Где взять ключ?</a></p>
         </div>
     </div>
-    
-    <!-- Новый функционал: Фильм для двоих -->
-    <div id="coupleMovieSection" class="container" style="margin-top: 30px;">
-        <h2>Фильм для двоих</h2>
-        <p class="section-description">Выберите по одному любимому фильму каждый, и мы подберем фильм, который понравится вам обоим</p>
+
+    <main class="w-full max-w-4xl flex-grow flex flex-col items-center justify-start pt-10">
         
-        <div class="couple-movie-form">
-            <div class="person-movie-section">
-                <h3>Ваш любимый фильм</h3>
-                <div class="movie-search-box">
-                    <input type="text" id="personOneMovieSearch" placeholder="Введите название фильма...">
-                    <button id="personOneSearchBtn">Поиск</button>
+        <header class="text-center mb-8">
+            <h1 class="text-4xl md:text-6xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-500">
+                Что посмотреть?
+            </h1>
+            <p class="text-slate-400 mt-2">Генератор случайных фильмов с фильтрами</p>
+        </header>
+
+        <section class="glass w-full p-6 rounded-2xl mb-8 transition-all duration-300">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="flex flex-col">
+                    <label class="text-sm text-gray-400 mb-1">Жанр</label>
+                    <select id="genreSelect" class="p-2 rounded bg-slate-800 border border-slate-600 text-white focus:border-blue-500 outline-none">
+                        <option value="">Любой жанр</option>
+                    </select>
                 </div>
-                <div id="personOneResults" class="search-results"></div>
-                <div id="personOneSelection" class="selected-movie" style="display: none;">
-                    <div class="selected-movie-poster">
-                        <img id="personOneMoviePoster" src="" alt="Постер фильма">
+                
+                <div class="flex flex-col">
+                    <label class="text-sm text-gray-400 mb-1">Мин. рейтинг (TMDB)</label>
+                    <div class="flex items-center gap-2">
+                        <input type="range" id="ratingRange" min="0" max="10" step="0.5" value="6" class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer">
+                        <span id="ratingValue" class="text-blue-400 font-bold w-8">6.0</span>
                     </div>
-                    <div class="selected-movie-info">
-                        <h4 id="personOneMovieTitle">Название фильма</h4>
-                        <p id="personOneMovieYear">Год: </p>
-                        <button id="personOneClearSelection">Выбрать другой</button>
-                    </div>
+                </div>
+
+                <div class="flex flex-col">
+                    <label class="text-sm text-gray-400 mb-1">Год выпуска (от)</label>
+                    <input type="number" id="yearInput" value="2000" min="1950" max="2030" class="p-2 rounded bg-slate-800 border border-slate-600 text-white focus:border-blue-500 outline-none">
+                </div>
+            </div>
+
+            <button id="generateBtn" onclick="findRandomMovie()" class="mt-6 w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-bold py-3 px-6 rounded-xl shadow-lg transform active:scale-95 transition-all flex justify-center items-center gap-2">
+                <span id="btnText">Найти фильм</span>
+                <div id="btnLoader" class="loader hidden"></div>
+            </button>
+        </section>
+
+        <section id="movieCard" class="glass w-full p-0 rounded-2xl overflow-hidden hidden flex-col md:flex-row relative animate-fade-in">
+            <div class="w-full md:w-1/3 relative">
+                <img id="moviePoster" src="" alt="Poster" class="w-full h-full object-cover min-h-[400px]">
+                <div class="absolute top-2 left-2 bg-black/70 px-2 py-1 rounded text-xs font-bold text-yellow-400 flex items-center gap-1">
+                    ★ <span id="movieRating">0.0</span>
                 </div>
             </div>
             
-            <div class="person-movie-section">
-                <h3>Любимый фильм партнера</h3>
-                <div class="movie-search-box">
-                    <input type="text" id="personTwoMovieSearch" placeholder="Введите название фильма...">
-                    <button id="personTwoSearchBtn">Поиск</button>
-                </div>
-                <div id="personTwoResults" class="search-results"></div>
-                <div id="personTwoSelection" class="selected-movie" style="display: none;">
-                    <div class="selected-movie-poster">
-                        <img id="personTwoMoviePoster" src="" alt="Постер фильма">
+            <div class="w-full md:w-2/3 p-6 flex flex-col justify-between">
+                <div>
+                    <h2 id="movieTitle" class="text-3xl font-bold mb-2">Название фильма</h2>
+                    <div class="flex flex-wrap gap-2 mb-4 text-sm text-slate-300">
+                        <span id="movieYear">2023</span> • 
+                        <span id="movieLanguage" class="uppercase">EN</span>
                     </div>
-                    <div class="selected-movie-info">
-                        <h4 id="personTwoMovieTitle">Название фильма</h4>
-                        <p id="personTwoMovieYear">Год: </p>
-                        <button id="personTwoClearSelection">Выбрать другой</button>
-                    </div>
+                    <p id="movieOverview" class="text-gray-300 leading-relaxed mb-6">Описание фильма...</p>
                 </div>
-            </div>
-        </div>
-        
-        <button id="findCoupleMovie" disabled>Найти фильм для двоих</button>
-        
-        <div id="coupleMovieLoading" class="loading" style="display: none;">Ищем идеальный фильм для вас двоих</div>
-        
-        <div id="coupleMovieCard" class="movie-card" style="display: none;">
-            <div class="movie-poster">
-                <img id="coupleMoviePoster" alt="Постер фильма">
-            </div>
-            <div class="movie-info">
-                <h2 id="coupleMovieTitle" class="movie-title">Название фильма</h2>
-                <div class="movie-meta">
-                    <span id="coupleMovieYear">Год</span>
-                    <span id="coupleMovieGenre">Жанр</span>
-                    <span id="coupleMovieRating" class="rating">0.0</span>
-                </div>
-                <p id="coupleMovieDescription" class="movie-description">Описание фильма будет здесь.</p>
-                <p id="recommendationReason" class="recommendation-reason">Причина рекомендации</p>
                 
-                <div class="actions">
-                    <button class="watch-later-btn" id="coupleWatchLaterBtn">Смотреть позже</button>
-                    <button class="favorite-btn" id="coupleFavoriteBtn">В избранное</button>
-                    <button class="seen-btn" id="coupleSeenBtn">Уже смотрел</button>
+                <div class="flex gap-3">
+                    <a id="tmdbLink" href="#" target="_blank" class="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg transition text-sm">Подробнее на TMDB</a>
+                    <button onclick="findRandomMovie()" class="text-blue-400 hover:text-blue-300 text-sm underline">Искать другой</button>
                 </div>
             </div>
-        </div>
-    </div>
-    
-    <footer>
-        <p>© 2025 • Данные о фильмах предоставлены TMDB API</p>
+        </section>
+
+    </main>
+
+    <footer class="mt-8 p-4 text-slate-500 text-sm">
+        Powered by TMDB API. Hosted on GitHub Pages.
     </footer>
 
     <script>
-        const apiKey = 'a459e5722a451a02c4fbee9d3c1f4e45';
-        let currentMovie = null;
-        let genresList = [];
-        let selectedGenres = [];
-        
-        // Списки фильмов
-        const lists = {
-            watchLater: [],
-            favorites: [],
-            seen: []
+        // === КОНФИГУРАЦИЯ И КЭШ ===
+        const API_BASE_URL = 'https://api.themoviedb.org/3';
+        let API_KEY = localStorage.getItem('tmdb_api_key');
+
+        // Проверка наличия ключа при загрузке
+        window.onload = () => {
+            if (!API_KEY) {
+                document.getElementById('apiKeyModal').classList.remove('hidden');
+            } else {
+                loadGenres();
+            }
         };
-        
-        // Переменные для функционала "Фильм для двоих"
-        let personOneMovie = null;
-        let personTwoMovie = null;
-        let coupleMovie = null;
-        
-        // Инициализация при загрузке страницы
-        document.addEventListener('DOMContentLoaded', function() {
-            // Загружаем списки фильмов из localStorage
-            loadListsFromStorage();
+
+        function saveApiKey() {
+            const input = document.getElementById('apiKeyInput').value.trim();
+            if (input.length > 10) {
+                localStorage.setItem('tmdb_api_key', input);
+                API_KEY = input;
+                document.getElementById('apiKeyModal').classList.add('hidden');
+                loadGenres();
+            } else {
+                alert('Пожалуйста, введите корректный API Key');
+            }
+        }
+
+        // Обновление значения ползунка
+        document.getElementById('ratingRange').addEventListener('input', (e) => {
+            document.getElementById('ratingValue').innerText = e.target.value;
+        });
+
+        // === ЛОГИКА ===
+
+        async function loadGenres() {
+            try {
+                const res = await fetch(`${API_BASE_URL}/genre/movie/list?api_key=${API_KEY}&language=ru-RU`);
+                const data = await res.json();
+                const select = document.getElementById('genreSelect');
+                data.genres.forEach(g => {
+                    const option = document.createElement('option');
+                    option.value = g.id;
+                    option.innerText = g.name;
+                    select.appendChild(option);
+                });
+            } catch (e) {
+                console.error('Ошибка загрузки жанров. Проверьте API Key.');
+                localStorage.removeItem('tmdb_api_key'); // Сброс, если ключ неверный
+                location.reload();
+            }
+        }
+
+        async function findRandomMovie() {
+            const btn = document.getElementById('generateBtn');
+            const loader = document.getElementById('btnLoader');
+            const btnText = document.getElementById('btnText');
             
-            // Получаем список жанров для фильтров
-            fetchGenres();
-            
-            // Настройка слайдера рейтинга
-            document.getElementById('minRating').addEventListener('input', function() {
-                document.getElementById('ratingValue').textContent = this.value;
-            });
-            
-            // Переключение видимости фильтров
-            document.getElementById('toggleFilters').addEventListener('click', function() {
-                const filterOptions = document.getElementById('filterOptions');
-                if (filterOptions.style.display === 'none') {
-                    filterOptions.style.display = 'block';
-                    this.textContent = 'Скрыть фильтры';
+            // UI Loading state
+            btn.disabled = true;
+            btnText.innerText = 'Ищем...';
+            loader.classList.remove('hidden');
+            document.getElementById('movieCard').classList.add('hidden');
+
+            const genre = document.getElementById('genreSelect').value;
+            const rating = document.getElementById('ratingRange').value;
+            const year = document.getElementById('yearInput').value;
+
+            try {
+                // 1. Сначала узнаем, сколько всего страниц результатов по этим фильтрам
+                let discoverUrl = `${API_BASE_URL}/discover/movie?api_key=${API_KEY}&language=ru-RU&sort_by=popularity.desc&include_adult=false&include_video=false`;
+                
+                if (genre) discoverUrl += `&with_genres=${genre}`;
+                if (rating) discoverUrl += `&vote_average.gte=${rating}`;
+                if (year) discoverUrl += `&primary_release_date.gte=${year}-01-01`;
+
+                // Делаем первый запрос, чтобы узнать total_pages
+                const initialRes = await fetch(discoverUrl);
+                const initialData = await initialRes.json();
+                
+                if (initialData.total_results === 0) {
+                    alert('Фильмы по таким критериям не найдены!');
+                    resetBtn();
+                    return;
+                }
+
+                // TMDB ограничивает доступ только к первым 500 страницам
+                const maxPages = initialData.total_pages > 500 ? 500 : initialData.total_pages;
+                
+                // 2. Генерируем случайную страницу
+                const randomPage = Math.floor(Math.random() * maxPages) + 1;
+
+                // 3. Запрашиваем эту конкретную страницу
+                const finalRes = await fetch(`${discoverUrl}&page=${randomPage}`);
+                const finalData = await finalRes.json();
+
+                // 4. Берем случайный фильм из списка (обычно 20 фильмов на странице)
+                const randomIndex = Math.floor(Math.random() * finalData.results.length);
+                const movie = finalData.results[randomIndex];
+
+                if (movie) {
+                    displayMovie(movie);
                 } else {
-                    filterOptions.style.display = 'none';
-                    this.textContent = 'Показать фильтры';
+                    alert('Произошла ошибка выборки. Попробуйте снова.');
                 }
-            });
-            
-            // Обработчики вкладок списков
-            document.querySelectorAll('.list-tab').forEach(tab => {
-                tab.addEventListener('click', function() {
-                    document.querySelectorAll('.list-tab').forEach(t => t.classList.remove('active'));
-                    this.classList.add('active');
-                    
-                    document.querySelectorAll('.movie-list').forEach(list => list.classList.remove('active'));
-                    document.getElementById(this.dataset.list + 'List').classList.add('active');
-                });
-            });
-            
-            // Обработчики кнопок сохранения
-            document.getElementById('watchLaterBtn').addEventListener('click', function() {
-                addMovieToList('watchLater', currentMovie);
-            });
-            
-            document.getElementById('favoriteBtn').addEventListener('click', function() {
-                addMovieToList('favorites', currentMovie);
-            });
-            
-            document.getElementById('seenBtn').addEventListener('click', function() {
-                addMovieToList('seen', currentMovie);
-            });
-            
-            // Кнопка поиска фильма
-            document.getElementById('getMovie').addEventListener('click', function() {
-                // Показываем индикатор загрузки
-                document.getElementById('loading').style.display = 'block';
-                document.getElementById('movieCard').style.display = 'none';
-                
-                getRandomMovie()
-                    .then(movie => {
-                        currentMovie = movie;
-                        
-                        // Заполняем данные о фильме
-                        document.getElementById('movieTitle').textContent = movie.title;
-                        document.getElementById('movieYear').textContent = movie.year;
-                        document.getElementById('movieRating').textContent = movie.rating;
-                        
-                        // Отображаем постер фильма
-                        const posterElement = document.getElementById('moviePoster');
-                        if (movie.poster) {
-                            posterElement.src = movie.poster;
-                            posterElement.alt = `Постер к фильму ${movie.title}`;
-                        } else {
-                            posterElement.src = '/api/placeholder/300/450';
-                            posterElement.alt = 'Постер отсутствует';
-                        }
-                        
-                        // Отображаем жанры
-                        let genresText = '';
-                        if (movie.genres && movie.genres.length > 0) {
-                            genresText = movie.genres.map(genre => genre.name).join(', ');
-                        } else {
-                            genresText = 'Жанр не указан';
-                        }
-                        document.getElementById('movieGenre').textContent = genresText;
-                        
-                        // Отображаем описание
-                        document.getElementById('movieDescription').textContent = movie.description;
-                        
-                        // Скрываем индикатор загрузки и показываем карточку фильма
-                        document.getElementById('loading').style.display = 'none';
-                        document.getElementById('movieCard').style.display = 'flex';
-                        
-                        // Плавно прокручиваем к карточке фильма
-                        /*document.getElementById('movieCard').scrollIntoView({
-                            behavior: 'smooth',
-                            block: 'start'
-                        });*/
-                    })
-                    .catch(error => {
-                        console.error('Ошибка при получении фильма:', error);
-                        document.getElementById('loading').style.display = 'none';
-                        
-                        // Показываем уведомление об ошибке
-                        showNotification('Не удалось найти фильм. Попробуйте изменить параметры фильтра.', 'error');
-                    });
-            });
-            
-            // Инициализация элементов для функциональности "Фильм для двоих"
-            initCoupleMovieFinder();
-        });
-        
-        // Функция загрузки списков из localStorage
-        function loadListsFromStorage() {
-            if (localStorage.getItem('movieLists')) {
-                const storedLists = JSON.parse(localStorage.getItem('movieLists'));
-                lists.watchLater = storedLists.watchLater || [];
-                lists.favorites = storedLists.favorites || [];
-                lists.seen = storedLists.seen || [];
-                
-                // Отображаем списки, если в них есть фильмы
-                renderAllLists();
-                
-                if (lists.watchLater.length > 0 || lists.favorites.length > 0 || lists.seen.length > 0) {
-                    document.getElementById('savedLists').style.display = 'block';
-                }
+
+            } catch (error) {
+                console.error(error);
+                alert('Ошибка соединения с TMDB');
+            } finally {
+                resetBtn();
             }
         }
-        
-        // Функция сохранения списков в localStorage
-        function saveListsToStorage() {
-            localStorage.setItem('movieLists', JSON.stringify(lists));
+
+        function displayMovie(movie) {
+            const card = document.getElementById('movieCard');
             
-            // Показываем блок со списками, если в нем есть хотя бы один фильм
-            if (lists.watchLater.length > 0 || lists.favorites.length > 0 || lists.seen.length > 0) {
-                document.getElementById('savedLists').style.display = 'block';
-            } else {
-                document.getElementById('savedLists').style.display = 'none';
-            }
+            // Заполняем данные
+            document.getElementById('movieTitle').innerText = movie.title;
+            document.getElementById('movieOverview').innerText = movie.overview || "Описание отсутствует.";
+            document.getElementById('movieRating').innerText = movie.vote_average.toFixed(1);
+            document.getElementById('movieYear').innerText = movie.release_date ? movie.release_date.split('-')[0] : 'N/A';
+            document.getElementById('movieLanguage').innerText = movie.original_language;
+            document.getElementById('tmdbLink').href = `https://www.themoviedb.org/movie/${movie.id}`;
+            
+            const posterPath = movie.poster_path 
+                ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` 
+                : 'https://via.placeholder.com/500x750?text=No+Poster';
+            document.getElementById('moviePoster').src = posterPath;
+
+            // Показываем карточку
+            card.classList.remove('hidden');
+            card.classList.add('flex');
+            
+            // Плавный скролл к результату
+            card.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
-        
-        // Функция добавления фильма в список
-        function addMovieToList(listName, movie) {
-            if (!movie) return;
+
+        function resetBtn() {
+            const btn = document.getElementById('generateBtn');
+            const loader = document.getElementById('btnLoader');
+            const btnText = document.getElementById('btnText');
             
-            // Проверяем, есть ли уже такой фильм в списке
-            const exists = lists[listName].some(m => m.id === movie.id);
-            if (!exists) {
-                lists[listName].push({
-                    id: movie.id,
-                    title: movie.title,
-                    year: movie.year,
-                    poster: movie.poster
-                });
-                
-                // Сохраняем списки и обновляем отображение
-                saveListsToStorage();
-                renderList(listName);
-                
-                showNotification(`Фильм "${movie.title}" добавлен в список "${getListTitle(listName)}"`, 'success');
-            } else {
-                showNotification(`Фильм "${movie.title}" уже есть в списке "${getListTitle(listName)}"`, 'error');
-            }
-        }
-        
-        // Функция удаления фильма из списка
-        function removeFromList(listName, movieId) {
-            lists[listName] = lists[listName].filter(movie => movie.id !== movieId);
-            saveListsToStorage();
-            renderList(listName);
-        }
-        
-        // Получение названия списка для отображения
-        function getListTitle(listName) {
-            switch(listName) {
-                case 'watchLater': return 'Смотреть позже';
-                case 'favorites': return 'Избранное';
-                case 'seen': return 'Просмотренные';
-                default: return '';
-            }
-        }
-        
-        // Отрисовка всех списков
-        function renderAllLists() {
-            renderList('watchLater');
-            renderList('favorites');
-            renderList('seen');
-        }
-        
-        // Отрисовка одного списка
-        function renderList(listName) {
-            const listElement = document.getElementById(listName + 'List');
-            
-            // Очищаем список
-            listElement.innerHTML = '';
-            
-            if (lists[listName].length === 0) {
-                listElement.innerHTML = '<div class="empty-list-message">В этом списке пока нет фильмов</div>';
-                return;
-            }
-            
-            // Добавляем фильмы в список
-            lists[listName].forEach(movie => {
-                const item = document.createElement('div');
-                item.className = 'movie-list-item';
-                
-                let posterUrl = movie.poster;
-                if (!posterUrl || posterUrl === 'null') {
-                    posterUrl = '/api/placeholder/60/90';
-                }
-                
-                item.innerHTML = `
-                    <img src="${posterUrl}" alt="${movie.title}">
-                    <div class="movie-list-title">${movie.title} (${movie.year})</div>
-                    <div class="remove-btn" data-id="${movie.id}" data-list="${listName}">✕</div>
-                `;
-                
-                listElement.appendChild(item);
-            });
-            
-            // Добавляем обработчики для кнопок удаления
-            document.querySelectorAll('.remove-btn').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    const movieId = parseInt(this.dataset.id);
-                    const listName = this.dataset.list;
-                    removeFromList(listName, movieId);
-                });
-            });
-        }
-        
-        // Получение списка жанров для фильтров
-        function fetchGenres() {
-            fetch(`https://api.themoviedb.org/3/genre/movie/list?api_key=${apiKey}&language=ru`)
-                .then(response => response.json())
-                .then(data => {
-                    genresList = data.genres;
-                    renderGenreOptions();
-                })
-                .catch(error => {
-                    console.error('Ошибка при получении списка жанров:', error);
-                });
-        }
-        
-        // Отрисовка опций жанров
-        function renderGenreOptions() {
-            const genreOptions = document.getElementById('genreOptions');
-            genreOptions.innerHTML = '';
-            
-            genresList.forEach(genre => {
-                const genreTag = document.createElement('div');
-                genreTag.className = 'genre-tag';
-                genreTag.dataset.id = genre.id;
-                genreTag.textContent = genre.name;
-                
-                genreTag.addEventListener('click', function() {
-                    this.classList.toggle('selected');
-                    
-                    const genreId = parseInt(this.dataset.id);
-                    if (this.classList.contains('selected')) {
-                        selectedGenres.push(genreId);
-                    } else {
-                        selectedGenres = selectedGenres.filter(id => id !== genreId);
-                    }
-                });
-                
-                genreOptions.appendChild(genreTag);
-            });
-        }
-        
-        // Улучшенная функция получения случайного фильма с учетом фильтров
-function getRandomMovie() {
-    // Получаем значения фильтров
-    const yearFrom = document.getElementById('yearFrom').value;
-    const yearTo = document.getElementById('yearTo').value;
-    const minRating = document.getElementById('minRating').value;
-    
-    // Формируем URL с учетом фильтров
-    let url = `https://api.themoviedb.org/3/discover/movie?api_key=${apiKey}&language=ru&sort_by=popularity.desc&vote_average.gte=${minRating}&primary_release_date.gte=${yearFrom}-01-01&primary_release_date.lte=${yearTo}-12-31`;
-    
-    // Добавляем выбранные жанры, если есть
-    if (selectedGenres.length > 0) {
-        url += `&with_genres=${selectedGenres.join(',')}`;
-    }
-    
-    // Добавляем случайную страницу (TMDB имеет максимум 500 страниц)
-    const randomPage = Math.floor(Math.random() * 20) + 1;
-    url += `&page=${randomPage}`;
-    
-    return fetch(url)
-        .then(response => response.json())
-        .then(data => {
-            if (data.results && data.results.length > 0) {
-                // Выбираем случайный фильм из результатов
-                const randomIndex = Math.floor(Math.random() * data.results.length);
-                const movie = data.results[randomIndex];
-                
-                // Получаем дополнительную информацию о фильме
-                return fetch(`https://api.themoviedb.org/3/movie/${movie.id}?api_key=${apiKey}&language=ru&append_to_response=credits,videos`)
-                    .then(response => response.json())
-                    .then(movieDetails => {
-                        // Получаем данные о режиссере
-                        const directors = movieDetails.credits ? movieDetails.credits.crew.filter(person => person.job === 'Director').map(director => director.name) : [];
-                        
-                        // Получаем данных об актерах (первые 5)
-                        const cast = movieDetails.credits ? movieDetails.credits.cast.slice(0, 5).map(actor => actor.name) : [];
-                        
-                        // Получаем трейлер (если есть)
-                        let trailerKey = null;
-                        if (movieDetails.videos && movieDetails.videos.results && movieDetails.videos.results.length > 0) {
-                            // Ищем официальный трейлер на русском, если такого нет, берём первый трейлер
-                            const ruTrailer = movieDetails.videos.results.find(video => 
-                                video.type === 'Trailer' && video.site === 'YouTube' && video.name.toLowerCase().includes('трейлер'));
-                            
-                            const anyTrailer = movieDetails.videos.results.find(video => 
-                                video.type === 'Trailer' && video.site === 'YouTube');
-                                
-                            trailerKey = ruTrailer ? ruTrailer.key : (anyTrailer ? anyTrailer.key : null);
-                        }
-                        
-                        return {
-                            id: movie.id,
-                            title: movie.title,
-                            year: movie.release_date ? movie.release_date.substring(0, 4) : 'Неизвестно',
-                            poster: movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : null,
-                            description: movie.overview || movieDetails.overview || 'Описание отсутствует',
-                            rating: movie.vote_average,
-                            genres: movie.genres || movieDetails.genres || [],
-                            directors: directors,
-                            cast: cast,
-                            trailerKey: trailerKey
-                        };
-                    });
-            } else {
-                throw new Error('Не удалось найти фильмы с указанными параметрами');
-            }
-        });
-}
-        
-        // Инициализация функционала "Фильм для двоих"
-        function initCoupleMovieFinder() {
-            // Поиск фильма для первого человека
-            document.getElementById('personOneSearchBtn').addEventListener('click', function() {
-                const query = document.getElementById('personOneMovieSearch').value.trim();
-                if (query) {
-                    searchMovie(query, 'personOneResults');
-                }
-            });
-            
-            // Также поиск по Enter
-            document.getElementById('personOneMovieSearch').addEventListener('keypress', function(e) {
-                if (e.key === 'Enter') {
-                    const query = this.value.trim();
-                    if (query) {
-                        searchMovie(query, 'personOneResults');
-                    }
-                }
-            });
-            
-            // Поиск фильма для второго человека
-            document.getElementById('personTwoSearchBtn').addEventListener('click', function() {
-                const query = document.getElementById('personTwoMovieSearch').value.trim();
-                if (query) {
-                    searchMovie(query, 'personTwoResults');
-                }
-            });
-            
-            // Также поиск по Enter
-            document.getElementById('personTwoMovieSearch').addEventListener('keypress', function(e) {
-                if (e.key === 'Enter') {
-                    const query = this.value.trim();
-                    if (query) {
-                        searchMovie(query, 'personTwoResults');
-                    }
-                }
-            });
-            
-            // Очистка выбора первого человека
-            document.getElementById('personOneClearSelection').addEventListener('click', function() {
-                personOneMovie = null;
-                document.getElementById('personOneSelection').style.display = 'none';
-                document.getElementById('personOneMovieSearch').value = '';
-                document.getElementById('personOneResults').innerHTML = '';
-                updateFindCoupleMovieButton();
-            });
-            
-            // Очистка выбора второго человека
-            document.getElementById('personTwoClearSelection').addEventListener('click', function() {
-                personTwoMovie = null;
-                document.getElementById('personTwoSelection').style.display = 'none';
-                document.getElementById('personTwoMovieSearch').value = '';
-                document.getElementById('personTwoResults').innerHTML = '';
-                updateFindCoupleMovieButton();
-            });
-            
-            // Кнопка поиска фильма для пары
-            document.getElementById('findCoupleMovie').addEventListener('click', findMovieForCouple);
-            
-            // Обработчики кнопок сохранения для найденного фильма
-            document.getElementById('coupleWatchLaterBtn').addEventListener('click', function() {
-                addMovieToList('watchLater', coupleMovie);
-            });
-            
-            document.getElementById('coupleFavoriteBtn').addEventListener('click', function() {
-                addMovieToList('favorites', coupleMovie);
-            });
-            
-            document.getElementById('coupleSeenBtn').addEventListener('click', function() {
-                addMovieToList('seen', coupleMovie);
-            });
-        }
-        
-        // Функция поиска фильма по запросу
-        function searchMovie(query, resultsContainerId) {
-            const resultsContainer = document.getElementById(resultsContainerId);
-            resultsContainer.innerHTML = '<div class="searching-message">Ищем фильмы...</div>';
-            
-            fetch(`https://api.themoviedb.org/3/search/movie?api_key=${apiKey}&language=ru&query=${encodeURIComponent(query)}`)
-                .then(response => response.json())
-                .then(data => {
-                    resultsContainer.innerHTML = '';
-                    
-                    if (data.results && data.results.length > 0) {
-                        // Показываем только первые 5 результатов
-                        const results = data.results.slice(0, 5);
-                        
-                        results.forEach(movie => {
-                            const resultItem = document.createElement('div');
-                            resultItem.className = 'search-result-item';
-                            
-                            const posterUrl = movie.poster_path 
-                                ? `https://image.tmdb.org/t/p/w92${movie.poster_path}`
-                                : '/api/placeholder/92/138';
-                            
-                            resultItem.innerHTML = `
-                                <img src="${posterUrl}" alt="${movie.title}">
-                                <div class="result-info">
-                                    <div class="result-title">${movie.title}</div>
-                                    <div class="result-year">${movie.release_date ? movie.release_date.substring(0, 4) : 'Н/Д'}</div>
-                                </div>
-                            `;
-                            
-                            resultItem.addEventListener('click', function() {
-                                // Получаем подробную информацию о фильме
-                                fetch(`https://api.themoviedb.org/3/movie/${movie.id}?api_key=${apiKey}&language=ru`)
-                                    .then(response => response.json())
-                                    .then(movieDetails => {
-                                        const selectedMovie = {
-                                            id: movie.id,
-                                            title: movie.title,
-                                            year: movie.release_date ? movie.release_date.substring(0, 4) : 'Неизвестно',
-                                            poster: movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : null,
-                                            description: movie.overview || movieDetails.overview || 'Описание отсутствует',
-                                            rating: movie.vote_average,
-                                            genres: movieDetails.genres || []
-                                        };
-                                        
-                                        // Определяем для какого человека выбран фильм
-                                        if (resultsContainerId === 'personOneResults') {
-                                            personOneMovie = selectedMovie;
-                                            displaySelectedMovie(personOneMovie, 'personOne');
-                                        } else {
-                                            personTwoMovie = selectedMovie;
-                                            displaySelectedMovie(personTwoMovie, 'personTwo');
-                                        }
-                                        
-                                        // Очищаем результаты поиска
-                                        resultsContainer.innerHTML = '';
-                                        
-                                        // Обновляем статус кнопки поиска фильма для пары
-                                        updateFindCoupleMovieButton();
-                                    });
-                            });
-                            
-                            resultsContainer.appendChild(resultItem);
-                        });
-                    } else {
-                        resultsContainer.innerHTML = '<div class="no-results">Фильмы не найдены</div>';
-                    }
-                })
-                .catch(error => {
-                    console.error('Ошибка при поиске фильма:', error);
-                    resultsContainer.innerHTML = '<div class="error-message">Произошла ошибка при поиске</div>';
-                });
-        }
-        
-        // Отображение выбранного фильма
-        function displaySelectedMovie(movie, personPrefix) {
-            const selectionDiv = document.getElementById(`${personPrefix}Selection`);
-            const posterElement = document.getElementById(`${personPrefix}MoviePoster`);
-            const titleElement = document.getElementById(`${personPrefix}MovieTitle`);
-            const yearElement = document.getElementById(`${personPrefix}MovieYear`);
-            
-            // Устанавливаем постер
-            if (movie.poster) {
-                posterElement.src = movie.poster;
-                posterElement.alt = `Постер к фильму ${movie.title}`;
-            } else {
-                posterElement.src = '/api/placeholder/150/225';
-                posterElement.alt = 'Постер отсутствует';
-            }
-            
-            // Устанавливаем название и год
-            titleElement.textContent = movie.title;
-            yearElement.textContent = `Год: ${movie.year}`;
-            
-            // Показываем выбранный фильм
-            selectionDiv.style.display = 'flex';
-        }
-        
-        // Обновление статуса кнопки поиска фильма для пары
-        function updateFindCoupleMovieButton() {
-            const button = document.getElementById('findCoupleMovie');
-            button.disabled = !(personOneMovie && personTwoMovie);
-        }
-        
-        // Поиск фильма для пары
-        function findMovieForCouple() {
-            if (!personOneMovie || !personTwoMovie) return;
-            
-            // Показываем индикатор загрузки
-            document.getElementById('coupleMovieLoading').style.display = 'block';
-            document.getElementById('coupleMovieCard').style.display = 'none';
-            
-            // Собираем жанры обоих фильмов
-            const personOneGenres = personOneMovie.genres.map(g => g.id);
-            const personTwoGenres = personTwoMovie.genres.map(g => g.id);
-            
-            // Находим общие жанры
-            const commonGenres = personOneGenres.filter(g => personTwoGenres.includes(g));
-            
-            // Если есть общие жанры, ищем по ним, иначе объединяем жанры
-            const searchGenres = commonGenres.length > 0 ? commonGenres : [...new Set([...personOneGenres, ...personTwoGenres])];
-            
-            // Формируем URL для поиска похожего фильма
-            let url = `https://api.themoviedb.org/3/discover/movie?api_key=${apiKey}&language=ru&sort_by=popularity.desc&vote_average.gte=6.5`;
-            
-            // Добавляем жанры
-            if (searchGenres.length > 0) {
-                url += `&with_genres=${searchGenres.join(',')}`;
-            }
-            
-            // Исключаем выбранные фильмы из результатов
-            url += `&without_movies=${personOneMovie.id},${personTwoMovie.id}`;
-            
-            // Добавляем случайную страницу (TMDB имеет максимум 500 страниц)
-            const randomPage = Math.floor(Math.random() * 20) + 1;
-            url += `&page=${randomPage}`;
-            
-            fetch(url)
-                .then(response => response.json())
-                .then(data => {
-                    if (data.results && data.results.length > 0) {
-                        // Выбираем случайный фильм из результатов
-                        const randomIndex = Math.floor(Math.random() * data.results.length);
-                        const movie = data.results[randomIndex];
-                        
-                        // Получаем дополнительную информацию о фильме
-                        return fetch(`https://api.themoviedb.org/3/movie/${movie.id}?api_key=${apiKey}&language=ru`)
-                            .then(response => response.json())
-                            .then(movieDetails => {
-                                coupleMovie = {
-                                    id: movie.id,
-                                    title: movie.title,
-                                    year: movie.release_date ? movie.release_date.substring(0, 4) : 'Неизвестно',
-                                    poster: movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : null,
-                                    description: movie.overview || movieDetails.overview || 'Описание отсутствует',
-                                    rating: movie.vote_average,
-                                    genres: movieDetails.genres || []
-                                };
-                                
-                                // Формируем причину рекомендации
-                                let reason = '';
-                                if (commonGenres.length > 0) {
-                                    const commonGenreNames = coupleMovie.genres
-                                        .filter(g => commonGenres.includes(g.id))
-                                        .map(g => g.name)
-                                        .join(', ');
-                                    
-                                    reason = `Рекомендуем этот фильм, потому что вам обоим нравятся фильмы жанра: ${commonGenreNames}`;
-                                } else {
-                                    reason = 'Рекомендуем этот фильм, основываясь на комбинации ваших предпочтений';
-                                }
-                                
-                                // Заполняем данные о фильме
-                                document.getElementById('coupleMovieTitle').textContent = coupleMovie.title;
-                                document.getElementById('coupleMovieYear').textContent = coupleMovie.year;
-                                document.getElementById('coupleMovieRating').textContent = coupleMovie.rating;
-                                document.getElementById('recommendationReason').textContent = reason;
-                                
-                                // Отображаем постер фильма
-                                const posterElement = document.getElementById('coupleMoviePoster');
-                                if (coupleMovie.poster) {
-                                    posterElement.src = coupleMovie.poster;
-                                    posterElement.alt = `Постер к фильму ${coupleMovie.title}`;
-                                } else {
-                                    posterElement.src = '/api/placeholder/300/450';
-                                    posterElement.alt = 'Постер отсутствует';
-                                }
-                                
-                                // Отображаем жанры
-                                let genresText = '';
-                                if (coupleMovie.genres && coupleMovie.genres.length > 0) {
-                                    genresText = coupleMovie.genres.map(genre => genre.name).join(', ');
-                                } else {
-                                    genresText = 'Жанр не указан';
-                                }
-                                document.getElementById('coupleMovieGenre').textContent = genresText;
-                                
-                                // Отображаем описание
-                                document.getElementById('coupleMovieDescription').textContent = coupleMovie.description;
-                                
-                                // Скрываем индикатор загрузки и показываем карточку фильма
-                                document.getElementById('coupleMovieLoading').style.display = 'none';
-                                document.getElementById('coupleMovieCard').style.display = 'flex';
-                                
-                                // Плавно прокручиваем к карточке фильма
-                                document.getElementById('coupleMovieCard').scrollIntoView({
-                                    behavior: 'smooth',
-                                    block: 'start'
-                                });
-                            });
-                    } else {
-                        throw new Error('Не удалось найти подходящий фильм');
-                    }
-                })
-                .catch(error => {
-                    console.error('Ошибка при поиске фильма для пары:', error);
-                    document.getElementById('coupleMovieLoading').style.display = 'none';
-                    
-                    // Показываем уведомление об ошибке
-                    showNotification('Не удалось найти подходящий фильм. Попробуйте выбрать другие фильмы.', 'error');
-                });
-        }
-        
-        // Функция отображения уведомлений
-        function showNotification(message, type = 'success') {
-            // Создаем элемент уведомления
-            const notification = document.createElement('div');
-            notification.className = `notification ${type}`;
-            notification.textContent = message;
-            
-            // Добавляем уведомление в DOM
-            document.body.appendChild(notification);
-            
-            // Показываем уведомление с анимацией
-            setTimeout(() => {
-                notification.classList.add('show');
-            }, 10);
-            
-            // Скрываем и удаляем уведомление через некоторое время
-            setTimeout(() => {
-                notification.classList.remove('show');
-                setTimeout(() => {
-                    notification.remove();
-                }, 300);
-            }, 3000);
+            btn.disabled = false;
+            btnText.innerText = 'Найти фильм';
+            loader.classList.add('hidden');
         }
     </script>
-    
-    <style>
-        /* Dark Theme - Modern and Elegant Styling */
-:root {
-    --bg-primary: #121212;
-    --bg-secondary: #1e1e1e;
-    --bg-tertiary: #2a2a2a;
-    --text-primary: #e0e0e0;
-    --text-secondary: #b0b0b0;
-    --accent-primary: #8c52ff;
-    --accent-secondary: #5e35b1;
-    --accent-tertiary: #3a1f8d;
-    --success: #4ecca3;
-    --warning: #ffbe0b;
-    --error: #ff5757;
-    --card-shadow: 0 8px 16px rgba(0, 0, 0, 0.4);
-    --hover-transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-}
-
-body {
-    font-family: 'Poppins', sans-serif;
-    line-height: 1.6;
-    color: var(--text-primary);
-    margin: 0;
-    padding: 0;
-    background-color: var(--bg-primary);
-    background-image: linear-gradient(to bottom, rgba(15, 15, 15, 0.8), rgba(10, 10, 10, 1)), 
-                      url('https://i.gifer.com/7U7d.gif');
-    background-attachment: fixed;
-    background-size: cover;
-}
-
-.container {
-    max-width: 1000px;
-    margin: 30px auto;
-    padding: 30px;
-    background-color: var(--bg-secondary);
-    box-shadow: var(--card-shadow);
-    border-radius: 12px;
-    position: relative;
-    overflow: hidden;
-}
-
-.container::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 5px;
-    background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary));
-}
-
-h1, h2, h3 {
-    color: var(--text-primary);
-    font-weight: 600;
-}
-
-h1 {
-    text-align: center;
-    margin-bottom: 30px;
-    font-size: 2.5rem;
-    background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    position: relative;
-    display: inline-block;
-    left: 50%;
-    transform: translateX(-50%);
-}
-
-/* Toggle Filters Button */
-.toggle-filters {
-    display: block;
-    margin: 0 auto 20px;
-    padding: 12px 20px;
-    background-color: var(--bg-tertiary);
-    color: var(--text-primary);
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: var(--hover-transition);
-    font-weight: 500;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-}
-
-.toggle-filters:hover {
-    background-color: var(--accent-tertiary);
-    transform: translateY(-2px);
-}
-
-/* Filter Options */
-.filter-options {
-    background-color: var(--bg-tertiary);
-    border-radius: 12px;
-    padding: 20px;
-    margin-bottom: 25px;
-    box-shadow: var(--card-shadow);
-    border-left: 4px solid var(--accent-primary);
-}
-
-.filter-title {
-    font-weight: 600;
-    margin-bottom: 15px;
-    font-size: 1.2rem;
-    color: var(--accent-primary);
-}
-
-.filter-subtitle {
-    font-weight: 500;
-    margin: 15px 0 8px;
-    color: var(--text-primary);
-}
-
-/* Genre Options */
-.genre-options {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    margin-bottom: 20px;
-}
-
-.genre-tag {
-    background-color: var(--bg-secondary);
-    border: 1px solid var(--accent-tertiary);
-    border-radius: 20px;
-    padding: 8px 16px;
-    font-size: 14px;
-    cursor: pointer;
-    transition: var(--hover-transition);
-    color: var(--text-secondary);
-}
-
-.genre-tag:hover {
-    background-color: rgba(140, 82, 255, 0.1);
-    color: var(--text-primary);
-    transform: translateY(-2px);
-}
-
-.genre-tag.selected {
-    background-color: var(--accent-primary);
-    color: white;
-    border-color: var(--accent-secondary);
-    box-shadow: 0 4px 8px rgba(140, 82, 255, 0.3);
-}
-
-/* Year Range */
-.year-range {
-    display: flex;
-    align-items: center;
-    gap: 15px;
-    margin-bottom: 20px;
-}
-
-.year-range input[type="text"] {
-    width: 80px;
-    padding: 8px 12px;
-    background-color: var(--bg-secondary);
-    border: 1px solid var(--accent-tertiary);
-    border-radius: 6px;
-    color: var(--text-primary);
-    font-size: 14px;
-    transition: var(--hover-transition);
-}
-
-.year-range input[type="text"]:focus {
-    outline: none;
-    border-color: var(--accent-primary);
-    box-shadow: 0 0 0 2px rgba(140, 82, 255, 0.2);
-}
-
-input[type="range"] {
-    width: 100%;
-    margin: 15px 0;
-    -webkit-appearance: none;
-    height: 6px;
-    background: linear-gradient(90deg, var(--accent-tertiary), var(--accent-primary));
-    border-radius: 3px;
-}
-
-input[type="range"]::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    width: 20px;
-    height: 20px;
-    background: var(--accent-primary);
-    border-radius: 50%;
-    cursor: pointer;
-    box-shadow: 0 0 5px rgba(140, 82, 255, 0.5);
-}
-
-/* Action Buttons */
-#getMovie, #findCoupleMovie {
-    display: block;
-    width: 220px;
-    margin: 25px auto;
-    padding: 14px 24px;
-    background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
-    color: white;
-    font-size: 16px;
-    font-weight: 500;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: var(--hover-transition);
-    box-shadow: 0 4px 15px rgba(140, 82, 255, 0.3);
-    text-transform: uppercase;
-    letter-spacing: 1px;
-}
-
-#getMovie:hover, #findCoupleMovie:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 6px 20px rgba(140, 82, 255, 0.4);
-}
-
-#findCoupleMovie:disabled {
-    background: linear-gradient(135deg, #555, #333);
-    cursor: not-allowed;
-    transform: none;
-    box-shadow: none;
-}
-
-/* Loading Indicator */
-.loading {
-    text-align: center;
-    padding: 20px;
-    font-style: italic;
-    color: var(--text-secondary);
-    display: none;
-}
-
-.loading::after {
-    content: '';
-    display: inline-block;
-    width: 30px;
-    height: 30px;
-    border: 3px solid rgba(140, 82, 255, 0.3);
-    border-radius: 50%;
-    border-top-color: var(--accent-primary);
-    animation: spin 1s ease-in-out infinite;
-    margin-left: 10px;
-    vertical-align: middle;
-}
-
-@keyframes spin {
-    to { transform: rotate(360deg); }
-}
-
-/* Movie Card */
-.movie-card {
-    display: flex;
-    background-color: var(--bg-secondary);
-    border-radius: 12px;
-    overflow: hidden;
-    box-shadow: var(--card-shadow);
-    margin: 30px 0;
-    transition: var(--hover-transition);
-    border: 1px solid rgba(140, 82, 255, 0.1);
-}
-
-.movie-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.6);
-}
-
-.movie-poster {
-    flex: 0 0 220px;
-    background-color: var(--bg-tertiary);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    position: relative;
-    overflow: hidden;
-}
-
-.movie-poster::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(to top, rgba(18, 18, 18, 0.8), transparent);
-}
-
-.movie-poster img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    transition: transform 0.5s ease;
-}
-
-.movie-card:hover .movie-poster img {
-    transform: scale(1.05);
-}
-
-.movie-info {
-    flex: 1;
-    padding: 25px;
-    position: relative;
-}
-
-.movie-title {
-    margin-top: 0;
-    margin-bottom: 15px;
-    color: var(--text-primary);
-    font-size: 1.6rem;
-}
-
-.movie-meta {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 15px;
-    margin-bottom: 20px;
-    color: var(--text-secondary);
-}
-
-.rating {
-    background: linear-gradient(90deg, #ff9d00, #ffbe0b);
-    color: #000;
-    padding: 4px 10px;
-    border-radius: 20px;
-    font-weight: bold;
-}
-
-.movie-description {
-    line-height: 1.8;
-    margin-bottom: 25px;
-    color: var(--text-secondary);
-}
-
-.recommendation-reason {
-    font-style: italic;
-    background-color: rgba(140, 82, 255, 0.1);
-    padding: 15px;
-    border-radius: 8px;
-    margin-bottom: 25px;
-    border-left: 4px solid var(--accent-primary);
-    color: var(--text-primary);
-}
-
-.actions {
-    display: flex;
-    gap: 12px;
-}
-
-.actions button {
-    padding: 10px 18px;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: var(--hover-transition);
-    font-weight: 500;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.actions button::before {
-    font-family: "Font Awesome 5 Free";
-    font-weight: 900;
-    font-size: 14px;
-}
-
-.watch-later-btn {
-    background-color: var(--accent-primary);
-    color: white;
-}
-
-.watch-later-btn::before {
-    content: "\f017"; /* clock icon */
-}
-
-.watch-later-btn:hover {
-    background-color: var(--accent-secondary);
-    transform: translateY(-2px);
-}
-
-.favorite-btn {
-    background-color: var(--error);
-    color: white;
-}
-
-.favorite-btn::before {
-    content: "\f004"; /* heart icon */
-}
-
-.favorite-btn:hover {
-    background-color: #e63946;
-    transform: translateY(-2px);
-}
-
-.seen-btn {
-    background-color: var(--bg-tertiary);
-    color: var(--text-primary);
-}
-
-.seen-btn::before {
-    content: "\f00c"; /* check icon */
-}
-
-.seen-btn:hover {
-    background-color: var(--success);
-    color: #000;
-    transform: translateY(-2px);
-}
-
-/* Saved Lists */
-.saved-lists {
-    margin-top: 40px;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
-    padding-top: 30px;
-}
-
-.list-tabs {
-    display: flex;
-    gap: 15px;
-    margin-bottom: 25px;
-    justify-content: center;
-}
-
-.list-tab {
-    padding: 10px 20px;
-    background-color: var(--bg-tertiary);
-    border-radius: 30px;
-    cursor: pointer;
-    transition: var(--hover-transition);
-    font-weight: 500;
-}
-
-.list-tab:hover {
-    background-color: rgba(140, 82, 255, 0.1);
-    transform: translateY(-2px);
-}
-
-.list-tab.active {
-    background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary));
-    color: white;
-    box-shadow: 0 4px 10px rgba(140, 82, 255, 0.3);
-}
-
-.movie-list {
-    display: none;
-}
-
-.movie-list.active {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-    gap: 20px;
-}
-
-.movie-list-item {
-    position: relative;
-    background-color: var(--bg-secondary);
-    border-radius: 12px;
-    overflow: hidden;
-    box-shadow: var(--card-shadow);
-    transition: var(--hover-transition);
-    border: 1px solid rgba(140, 82, 255, 0.1);
-}
-
-.movie-list-item:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 12px 20px rgba(0, 0, 0, 0.5);
-}
-
-.movie-list-item img {
-    width: 100%;
-    height: 250px;
-    object-fit: cover;
-    transition: transform 0.5s ease;
-}
-
-.movie-list-item:hover img {
-    transform: scale(1.05);
-}
-
-.movie-list-title {
-    padding: 12px;
-    font-size: 14px;
-    text-align: center;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    background-color: rgba(30, 30, 30, 0.9);
-    color: var(--text-primary);
-    position: absolute;
-    bottom: 0;
-    width: 100%;
-    box-sizing: border-box;
-}
-
-.remove-btn {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    width: 30px;
-    height: 30px;
-    background-color: rgba(255, 87, 87, 0.8);
-    color: white;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    border-radius: 50%;
-    cursor: pointer;
-    font-size: 14px;
-    visibility: hidden;
-    opacity: 0;
-    transition: visibility 0s, opacity 0.3s;
-    z-index: 2;
-}
-
-.movie-list-item:hover .remove-btn {
-    visibility: visible;
-    opacity: 1;
-}
-
-.empty-list-message {
-    grid-column: 1 / -1;
-    text-align: center;
-    padding: 30px;
-    font-style: italic;
-    color: var(--text-secondary);
-    background-color: var(--bg-tertiary);
-    border-radius: 8px;
-    border: 1px dashed rgba(140, 82, 255, 0.3);
-}
-
-/* Couple Movie Feature */
-.section-description {
-    text-align: center;
-    margin-bottom: 25px;
-    color: var(--text-secondary);
-    max-width: 700px;
-    margin-left: auto;
-    margin-right: auto;
-}
-
-.couple-movie-form {
-    display: flex;
-    gap: 25px;
-    margin-bottom: 30px;
-}
-
-.person-movie-section {
-    flex: 1;
-    background-color: var(--bg-tertiary);
-    border-radius: 12px;
-    padding: 20px;
-    box-shadow: var(--card-shadow);
-    position: relative;
-    overflow: hidden;
-}
-
-.person-movie-section::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 4px;
-    background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary));
-}
-
-.person-movie-section h3 {
-    margin-top: 0;
-    text-align: center;
-    margin-bottom: 20px;
-    font-size: 1.2rem;
-    color: var(--accent-primary);
-}
-
-.movie-search-box {
-    display: flex;
-    margin-bottom: 20px;
-}
-
-.movie-search-box input {
-    flex: 1;
-    padding: 12px 15px;
-    background-color: var(--bg-secondary);
-    border: 1px solid var(--accent-tertiary);
-    border-radius: 8px 0 0 8px;
-    color: var(--text-primary);
-    font-size: 14px;
-    transition: var(--hover-transition);
-}
-
-.movie-search-box input:focus {
-    outline: none;
-    border-color: var(--accent-primary);
-}
-
-.movie-search-box button {
-    padding: 12px 20px;
-    background-color: var(--accent-primary);
-    color: white;
-    border: none;
-    border-radius: 0 8px 8px 0;
-    cursor: pointer;
-    transition: var(--hover-transition);
-}
-
-.movie-search-box button:hover {
-    background-color: var(--accent-secondary);
-}
-
-.search-results {
-    max-height: 300px;
-    overflow-y: auto;
-    margin-bottom: 20px;
-    border-radius: 8px;
-    background-color: var(--bg-secondary);
-    border: 1px solid rgba(140, 82, 255, 0.1);
-}
-
-.search-results::-webkit-scrollbar {
-    width: 8px;
-}
-
-.search-results::-webkit-scrollbar-track {
-    background: var(--bg-secondary);
-    border-radius: 10px;
-}
-
-.search-results::-webkit-scrollbar-thumb {
-    background-color: var(--accent-tertiary);
-    border-radius: 10px;
-}
-
-.search-result-item {
-    display: flex;
-    align-items: center;
-    padding: 12px 15px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-    cursor: pointer;
-    transition: var(--hover-transition);
-}
-
-.search-result-item:hover {
-    background-color: rgba(140, 82, 255, 0.1);
-}
-
-.search-result-item img {
-    width: 60px;
-    height: 90px;
-    object-fit: cover;
-    margin-right: 15px;
-    border-radius: 4px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-}
-
-.result-info {
-    flex: 1;
-}
-
-.result-title {
-    font-weight: 500;
-    margin-bottom: 5px;
-    color: var(--text-primary);
-}
-
-.result-year {
-    color: var(--text-secondary);
-    font-size: 14px;
-}
-
-.selected-movie {
-    display: flex;
-    align-items: center;
-    background-color: rgba(140, 82, 255, 0.1);
-    border-radius: 12px;
-    padding: 15px;
-    border: 1px solid rgba(140, 82, 255, 0.2);
-}
-
-.selected-movie-poster {
-    width: 100px;
-    height: 150px;
-    overflow: hidden;
-    margin-right: 20px;
-    border-radius: 8px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-}
-
-.selected-movie-poster img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-
-.selected-movie-info {
-    flex: 1;
-}
-
-.selected-movie-info h4 {
-    margin-top: 0;
-    margin-bottom: 8px;
-    color: var(--text-primary);
-    font-size: 1.1rem;
-}
-
-.selected-movie-info p {
-    margin-bottom: 15px;
-    color: var(--text-secondary);
-}
-
-.selected-movie-info button {
-    padding: 8px 12px;
-    background-color: var(--error);
-    color: white;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 12px;
-    transition: var(--hover-transition);
-    display: flex;
-    align-items: center;
-    gap: 5px;
-}
-
-.selected-movie-info button::before {
-    content: "\f2ed"; /* trash icon */
-    font-family: "Font Awesome 5 Free";
-    font-weight: 900;
-}
-
-.selected-movie-info button:hover {
-    background-color: #ff3333;
-}
-
-.searching-message, .no-results, .error-message {
-    padding: 15px;
-    text-align: center;
-    font-style: italic;
-    color: var(--text-secondary);
-    background-color: var(--bg-secondary);
-    border-radius: 8px;
-}
-
-.error-message {
-    color: var(--error);
-    border-left: 3px solid var(--error);
-}
-
-/* Notifications */
-.notification {
-    position: fixed;
-    bottom: 25px;
-    right: 25px;
-    padding: 15px 25px;
-    border-radius: 8px;
-    color: white;
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
-    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    opacity: 0;
-    transform: translateY(20px);
-    z-index: 1000;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.notification::before {
-    font-family: "Font Awesome 5 Free";
-    font-weight: 900;
-    font-size: 16px;
-}
-
-.notification.success {
-    background-color: var(--success);
-}
-
-.notification.success::before {
-    content: "\f00c"; /* check icon */
-}
-
-.notification.error {
-    background-color: var(--error);
-}
-
-.notification.error::before {
-    content: "\f00d"; /* x icon */
-}
-
-.notification.show {
-    opacity: 1;
-    transform: translateY(0);
-}
-
-/* Footer */
-footer {
-    text-align: center;
-    margin: 40px 0 20px;
-    color: var(--text-secondary);
-    font-size: 14px;
-    position: relative;
-}
-
-footer::before {
-    content: '';
-    display: block;
-    width: 50px;
-    height: 2px;
-    background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary));
-    margin: 0 auto 15px;
-}
-
-/* Glass Effect Elements */
-.container, .filter-options, .movie-card, .person-movie-section {
-    backdrop-filter: blur(10px);
-}
-
-/* Media Queries */
-@media (max-width: 768px) {
-    .container {
-        padding: 20px;
-        margin: 15px;
-        width: auto;
-    }
-    
-    .movie-card {
-        flex-direction: column;
-    }
-    
-    .movie-poster {
-        height: 300px;
-        flex: none;
-    }
-    
-    .couple-movie-form {
-        flex-direction: column;
-    }
-    
-    .actions {
-        flex-direction: column;
-    }
-    
-    .actions button {
-        width: 100%;
-    }
-    
-    h1 {
-        font-size: 2rem;
-    }
-    
-    .movie-list.active {
-        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-    }
-}
-
-/* Animation Classes */
-.fade-in {
-    animation: fadeIn 0.5s ease forwards;
-}
-
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(20px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
-.pulse {
-    animation: pulse 1.5s ease infinite;
-}
-
-@keyframes pulse {
-    0% { box-shadow: 0 0 0 0 rgba(140, 82, 255, 0.4); }
-    70% { box-shadow: 0 0 0 10px rgba(140, 82, 255, 0); }
-    100% { box-shadow: 0 0 0 0 rgba(140, 82, 255, 0); }
-}
-
-/* Custom Scrollbar for the Page */
-body::-webkit-scrollbar {
-    width: 10px;
-}
-
-body::-webkit-scrollbar-track {
-    background: var(--bg-primary);
-}
-
-body::-webkit-scrollbar-thumb {
-    background: var(--accent-tertiary);
-    border-radius: 10px;
-}
-
-body::-webkit-scrollbar-thumb:hover {
-    background: var(--accent-primary);
-}
-    </style>
 </body>
 </html>
